@@ -246,8 +246,31 @@ export default class Graph<TNode: Node, TEdgeType: string | null = null> {
   isOrphanedNode(node: TNode): boolean {
     assertHasNode(this, node);
 
-    for (let [, typeMap] of this.inboundEdges.get(node.id)) {
-      if (typeMap.size !== 0) {
+    let rootNode = this.getRootNode();
+    for (let [type, inboundNodeIds] of this.inboundEdges.get(node.id)) {
+      if (inboundNodeIds.size === 0) {
+        continue;
+      }
+
+      if (rootNode == null) {
+        // If the graph does not have a root, and there are inbound edges,
+        // this node should not be considered orphaned.
+        return false;
+      }
+
+      let hasPathToRoot = false;
+      this.traverseAncestors(
+        node,
+        (ancestor, _, actions) => {
+          if (ancestor.id === rootNode.id) {
+            hasPathToRoot = true;
+            actions.stop();
+          }
+        },
+        type
+      );
+
+      if (hasPathToRoot) {
         return false;
       }
     }
